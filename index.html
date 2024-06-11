@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Events Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    #map-container {
+      display: flex;
+      height: 100vh;
+    }
+    #map {
+      flex: 1;
+    }
+    #sidebar {
+      width: 300px;
+      background-color: #f4f4f4;
+      padding: 20px;
+      overflow-y: auto;
+      box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    }
+    .event {
+      margin-bottom: 20px;
+      padding: 10px;
+      border-radius: 5px;
+      background-color: #fff;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .event:hover {
+      background-color: #e0e0e0;
+    }
+    .event-title {
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #333;
+    }
+    .event-description {
+      font-size: 14px;
+      color: #666;
+    }
+    .leaflet-popup-content {
+      color: #333;
+    }
+    .leaflet-popup-tip-container {
+      display: none;
+    }
+    .no-events {
+      text-align: center;
+      font-size: 18px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div id="map-container">
+    <div id="map"></div>
+    <div id="sidebar"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const apiUrl = 'https://eonet.gsfc.nasa.gov/api/v2.1/categories/14';
+
+    fetch(apiUrl)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        const map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        const sidebar = document.getElementById('sidebar');
+
+        if (data.events.length === 0) {
+          const noEventsMessage = document.createElement('div');
+          noEventsMessage.classList.add('no-events');
+          noEventsMessage.textContent = 'Currently no landslide alerts are there';
+          sidebar.appendChild(noEventsMessage);
+          return;
+        }
+
+        data.events.forEach(event => {
+          const coordinates = event.geometries[0].coordinates;
+          const marker = L.marker([coordinates[1], coordinates[0]]).addTo(map);
+          marker.bindPopup(`<b>${event.title}</b><br>${event.description || "No description available"}`);
+
+          const eventElement = document.createElement('div');
+          eventElement.classList.add('event');
+          eventElement.innerHTML = `
+            <div class="event-title">${event.title}</div>
+            <div class="event-description">${event.description || "No description available"}</div>
+          `;
+          eventElement.addEventListener('click', () => {
+            map.setView([coordinates[1], coordinates[0]], 10);
+            marker.openPopup();
+          });
+          sidebar.appendChild(eventElement);
+        });
+      })
+      .catch(error => {
+        console.error('Error:', error);
+      });
+  </script>
+</body>
+</html>
